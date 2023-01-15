@@ -3,12 +3,59 @@
 
 var Act = require("../src/Act.bs.js");
 var Ava = require("ava").default;
+var Js_exn = require("rescript/lib/js/js_exn.js");
 
 Ava("[ReScript] read outside effect stale computed", (function (t) {
         var a = Act.make(0);
         t.is(Act.get(a), 0, undefined);
         Act.set(a, 1);
         t.is(Act.get(a), 1, undefined);
+      }));
+
+Ava("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
+        var res = [];
+        var a = Act.make(0);
+        var b = Act.make(0);
+        var c = Act.computed(function (param) {
+              return Act.get(a) % 2 + Act.get(b) % 2 | 0;
+            });
+        Act.subscribe(c, (function (v) {
+                res.push(v);
+              }));
+        t.deepEqual(res, [0], undefined);
+      }));
+
+Ava("throw should not broke linking", (function (t) {
+        try {
+          Act.subscribe(Act.computed(function (param) {
+                    return Js_exn.raiseError("Foo");
+                  }), (function (param) {
+                  
+                }));
+        }
+        catch (exn){
+          
+        }
+        var a = Act.make(0);
+        var b = Act.computed(function (param) {
+              return Act.get(a);
+            });
+        var c = Act.computed(function (param) {
+              return Act.get(a);
+            });
+        Act.subscribe(c, (function (param) {
+                
+              }));
+        Act.set(a, 1);
+        t.deepEqual([
+              Act.get(a),
+              Act.get(b),
+              Act.get(c)
+            ], [
+              1,
+              1,
+              1
+            ], undefined);
       }));
 
 Ava("[ReScript] redefine act.notify", (async function (t) {

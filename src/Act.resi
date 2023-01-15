@@ -4,6 +4,8 @@ type unsubscribe = unit => unit
 
 let make: 'a => t<'a>
 
+let computed: (unit => 'a) => t<'a>
+
 let get: t<'a> => 'a
 
 let set: (t<'a>, 'a) => unit
