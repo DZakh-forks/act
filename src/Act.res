@@ -34,30 +34,43 @@ type effect = (. unit) => unit
 type unsubscribe = unit => unit
 type queue = array<array<effect>>
 
-type value<'a> = {
+type t<'a> = {
+  @as("a")
+  state: 'a,
+  @as("g")
+  get: unit => 'a,
+  @as("s") @dead
+  set: 'a => unit,
+}
+type pub<'a> = {
+  @as("a")
+  act: t<'a>,
   @as("s")
+  stateSnapshot: 'a,
+}
+type valueAct<'a> = {
+  @as("a")
   mutable state: 'a,
   @as("v")
   mutable version: float,
   @as("e")
   mutable effects: array<effect>,
+  @as("g") @dead
+  mutable get: unit => 'a,
+  @as("s") @dead
+  mutable set: 'a => unit,
 }
-type rec t<'a> = Value(value<'a>) | Computed(computed<'a>)
-and computed<'a> = {
-  @as("s")
+type computedAct<'a> = {
+  @as("a")
   mutable state: 'a,
   @as("v")
   mutable version: float,
-  @as("f")
-  fn: unit => 'a,
   @as("p")
   mutable pubs: array<pub<unknown>>,
-}
-and pub<'a> = {
-  @as("a")
-  act: t<'a>,
-  @as("s")
-  stateSnapshot: 'a,
+  @as("g") @dead
+  mutable get: unit => 'a,
+  @as("s") @dead
+  mutable set: 'a => unit,
 }
 
 type rec context = {
@@ -94,6 +107,8 @@ let castAnyActToUnknownAct: t<'a> => t<unknown> = Obj.magic
 let castUnknownActToAnyAct: t<unknown> => t<'a> = Obj.magic
 let castNotifyToInternal: notify => internalNotify = Obj.magic
 let castNotifyFromInternal: internalNotify => notify = Obj.magic
+let castValueActToGeneric: valueAct<'a> => t<'a> = Obj.magic
+let castComputedActToGeneric: computedAct<'a> => t<'a> = Obj.magic
 
 let initialNotify = (. context) => {
   let iterator = context.queue
@@ -128,105 +143,123 @@ let setNotify = notify => {
 }
 
 @inline
-let getActState = act =>
-  switch act {
-  | Value({state}) => state
-  | Computed({state}) => state
-  }
-
-@inline
-let addPublisher = act => {
+let addPublisher = (act: t<'a>) => {
   switch context.maybePubs {
-  | Some(pubs) => pubs->Array.push({act, stateSnapshot: act->getActState})->ignore
+  | Some(pubs) =>
+    pubs
+    ->Array.push({
+      act,
+      stateSnapshot: act.state,
+    })
+    ->ignore
 
   | None => ()
   }
 }
 
-let make = initial => Value({
-  state: initial,
-  version: -1.,
-  effects: [],
-})
-
-let computed = fn => Computed({
-  state: %raw("undefined"),
-  version: -1.,
-  fn,
-  pubs: [],
-})
-
 @inline
-let syncEffects = (value: value<'a>) => {
-  if value.version !== context.version {
-    value.version = context.version
+let syncEffects = (valueAct: valueAct<'a>) => {
+  if valueAct.version !== context.version {
+    valueAct.version = context.version
     switch (context.maybeUnroot, context.maybeRoot) {
     | (Some(unroot), _) =>
-      value.effects
-      ->Array.removeCountInPlace(~pos=value.effects->Array.indexOf(unroot), ~count=1)
+      valueAct.effects
+      ->Array.removeCountInPlace(~pos=valueAct.effects->Array.indexOf(unroot), ~count=1)
       ->ignore
-    | (_, Some(root)) => value.effects->Array.push(root)->ignore
+    | (_, Some(root)) => valueAct.effects->Array.push(root)->ignore
     | _ => ()
     }
   }
 }
 
-let rec get = act => {
-  let act = act->castAnyActToUnknownAct
-  switch act {
-  | Value(value) => value->syncEffects
-  | Computed(computed) =>
-    if computed.version !== context.version || context.maybeRoot === None {
-      let computedPubs = computed.pubs
-      let prevPubs = context.maybePubs
-      context.maybePubs = None
-
-      let isEmptyComputedPubs = computedPubs->Array.length === 0
-      if (
-        isEmptyComputedPubs ||
-        computedPubs->Array.some(el =>
-          el.act->castUnknownActToAnyAct->get->castAnyToUnknown !== el.stateSnapshot
-        )
-      ) {
-        let newPubs = isEmptyComputedPubs ? computedPubs : []
-        context.maybePubs = Some(newPubs)
-        computed.pubs = newPubs
-        computed.state = computed.fn->Fn.call1()
-
-        // TODO:
-        // let newState = computed()
-        // if (_version === -1 || !equal?.(s, newState)) s = newState
-      }
-
-      context.maybePubs = prevPubs
-
-      computed.version = context.version
-    }
+let make = initial => {
+  let valueAct = {
+    state: initial,
+    version: -1.,
+    effects: [],
+    get: %raw("undefined"),
+    set: %raw("undefined"),
   }
-  act->addPublisher
-  act->getActState->castUnknownToAny
-}
 
-let set = (act, state) => {
-  let act = act->castAnyActToUnknownAct
-  let state = state->castAnyToUnknown
-  switch act {
-  | Value(value) => {
-      value.state = state
+  {
+    let valueAct = valueAct->(Obj.magic: valueAct<'a> => valueAct<unknown>)
+    valueAct.get = () => {
+      valueAct->syncEffects
+      valueAct->castValueActToGeneric->addPublisher
+      valueAct.state->castUnknownToAny
+    }
+    valueAct.set = state => {
+      let state = state->castAnyToUnknown
+      valueAct.state = state
 
-      if context.queue->Array.push(value.effects) === 1 {
+      if context.queue->Array.push(valueAct.effects) === 1 {
         Promise.resolve()->Promise.thenResolve(() => getNotify()(.))->ignore
       }
 
-      value.effects = []
+      valueAct.effects = []
 
-      value->syncEffects
-      act->addPublisher
+      valueAct->syncEffects
+      valueAct->castValueActToGeneric->addPublisher
     }
-
-  | Computed(_) => Exn.raiseError(Exn.makeError("Act.set is not supported for computed acts."))
   }
+
+  valueAct->castValueActToGeneric
 }
+
+let computed = fn => {
+  let computedAct = {
+    state: %raw("undefined"),
+    version: -1.,
+    pubs: [],
+    get: %raw("undefined"),
+    set: _ => {
+      Exn.raiseError(Exn.makeError("Act.set is not supported for computed acts."))
+    },
+  }
+
+  {
+    let computedAct = computedAct->(Obj.magic: computedAct<'a> => computedAct<unknown>)
+    computedAct.get = () => {
+      if computedAct.version !== context.version || context.maybeRoot === None {
+        let computedPubs = computedAct.pubs
+        let prevPubs = context.maybePubs
+        context.maybePubs = None
+
+        let isEmptyComputedPubs = computedPubs->Array.length === 0
+        if (
+          isEmptyComputedPubs ||
+          computedPubs->Array.some(el =>
+            (el.act->castUnknownActToAnyAct).get->Fn.call1() !== el.stateSnapshot
+          )
+        ) {
+          let newPubs = isEmptyComputedPubs ? computedPubs : []
+          context.maybePubs = Some(newPubs)
+          computedAct.pubs = newPubs
+          computedAct.state = fn->Fn.call1()->castAnyToUnknown
+
+          // TODO:
+          // let newState = computed()
+          // if (_version === -1 || !equal?.(s, newState)) s = newState
+        }
+
+        context.maybePubs = prevPubs
+
+        computedAct.version = context.version
+      }
+
+      computedAct->castComputedActToGeneric->addPublisher
+      computedAct.state->castUnknownToAny
+    }
+  }
+
+  computedAct->castComputedActToGeneric
+}
+
+@send
+external get: t<'a> => 'a = "g"
+
+@send
+external set: (t<'a>, 'a) => unit = "s"
 
 let subscribe = (act, cb) => {
   let act = act->castAnyActToUnknownAct

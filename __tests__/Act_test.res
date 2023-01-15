@@ -24,6 +24,13 @@ test("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", t => {
   let a = Act.make(0)
   let b = Act.make(0)
   let c = Act.computed(() => a->Act.get->mod(2) + b->Act.get->mod(2))
+  // let d = Act.computed(
+  //   () => numbers.map((i) => i + (A() % 2) - (B() % 2)),
+  //   (l, r) => l.length === r.length && l.every((v, i) => v === r[i]),
+  // )
+  // const E = act(() => hard(C() + A() + D()[0]!, 'E'))
+  // const F = act(() => hard(D()[0]! && B(), 'F'))
+  // const G = act(() => C() + (C() || E() % 2) + D()[0]! + F())
 
   let _ = c->Act.subscribe(v => res->Array.push(v)->ignore)
 

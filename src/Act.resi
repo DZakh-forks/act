@@ -6,9 +6,11 @@ let make: 'a => t<'a>
 
 let computed: (unit => 'a) => t<'a>
 
-let get: t<'a> => 'a
+@send
+external get: t<'a> => 'a = "g"
 
-let set: (t<'a>, 'a) => unit
+@send
+external set: (t<'a>, 'a) => unit = "s"
 
 let subscribe: (t<'a>, 'a => unit) => unsubscribe
 

@@ -7,9 +7,9 @@ var Js_exn = require("rescript/lib/js/js_exn.js");
 
 Ava("[ReScript] read outside effect stale computed", (function (t) {
         var a = Act.make(0);
-        t.is(Act.get(a), 0, undefined);
-        Act.set(a, 1);
-        t.is(Act.get(a), 1, undefined);
+        t.is(a.g(), 0, undefined);
+        a.s(1);
+        t.is(a.g(), 1, undefined);
       }));
 
 Ava("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
@@ -17,7 +17,7 @@ Ava("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
         var a = Act.make(0);
         var b = Act.make(0);
         var c = Act.computed(function (param) {
-              return Act.get(a) % 2 + Act.get(b) % 2 | 0;
+              return a.g() % 2 + b.g() % 2 | 0;
             });
         Act.subscribe(c, (function (v) {
                 res.push(v);
@@ -38,19 +38,19 @@ Ava("throw should not broke linking", (function (t) {
         }
         var a = Act.make(0);
         var b = Act.computed(function (param) {
-              return Act.get(a);
+              return a.g();
             });
         var c = Act.computed(function (param) {
-              return Act.get(a);
+              return a.g();
             });
         Act.subscribe(c, (function (param) {
                 
               }));
-        Act.set(a, 1);
+        a.s(1);
         t.deepEqual([
-              Act.get(a),
-              Act.get(b),
-              Act.get(c)
+              a.g(),
+              b.g(),
+              c.g()
             ], [
               1,
               1,
@@ -73,7 +73,7 @@ Ava("[ReScript] redefine act.notify", (async function (t) {
                 callsRef.contents = callsRef.contents + 1 | 0;
               }));
         t.is(callsRef.contents, 1, undefined);
-        Act.set(a, 123);
+        a.s(123);
         await Promise.resolve(undefined);
         t.is(callsRef.contents, 1, undefined);
         await new Promise((function (resolve, param) {

@@ -45,109 +45,103 @@ function setNotify(notify) {
 }
 
 function make(initial) {
-  return {
-          TAG: /* Value */0,
-          _0: {
-            s: initial,
-            v: -1,
-            e: []
-          }
-        };
+  var valueAct = {
+    a: initial,
+    v: -1,
+    e: [],
+    g: undefined,
+    s: undefined
+  };
+  valueAct.g = (function (param) {
+      if (valueAct.v !== context.v) {
+        valueAct.v = context.v;
+        var match = context.u;
+        var match$1 = context.r;
+        if (match !== undefined) {
+          valueAct.e.splice(valueAct.e.indexOf(match), 1);
+        } else if (match$1 !== undefined) {
+          valueAct.e.push(match$1);
+        }
+        
+      }
+      var pubs = context.p;
+      if (pubs !== undefined) {
+        pubs.push({
+              a: valueAct,
+              s: valueAct.a
+            });
+      }
+      return valueAct.a;
+    });
+  valueAct.s = (function (state) {
+      valueAct.a = state;
+      if (context.q.push(valueAct.e) === 1) {
+        Promise.resolve(undefined).then(function (param) {
+              getNotify(undefined)();
+            });
+      }
+      valueAct.e = [];
+      if (valueAct.v !== context.v) {
+        valueAct.v = context.v;
+        var match = context.u;
+        var match$1 = context.r;
+        if (match !== undefined) {
+          valueAct.e.splice(valueAct.e.indexOf(match), 1);
+        } else if (match$1 !== undefined) {
+          valueAct.e.push(match$1);
+        }
+        
+      }
+      var pubs = context.p;
+      if (pubs !== undefined) {
+        pubs.push({
+              a: valueAct,
+              s: valueAct.a
+            });
+        return ;
+      }
+      
+    });
+  return valueAct;
 }
 
 function computed(fn) {
-  return {
-          TAG: /* Computed */1,
-          _0: {
-            s: undefined,
-            v: -1,
-            f: fn,
-            p: []
-          }
-        };
-}
-
-function get(act) {
-  if (act.TAG === /* Value */0) {
-    var value = act._0;
-    if (value.v !== context.v) {
-      value.v = context.v;
-      var match = context.u;
-      var match$1 = context.r;
-      if (match !== undefined) {
-        value.e.splice(value.e.indexOf(match), 1);
-      } else if (match$1 !== undefined) {
-        value.e.push(match$1);
+  var computedAct = {
+    a: undefined,
+    v: -1,
+    p: [],
+    g: undefined,
+    s: (function (param) {
+        throw new Error("Act.set is not supported for computed acts.");
+      })
+  };
+  computedAct.g = (function (param) {
+      if (computedAct.v !== context.v || context.r === undefined) {
+        var computedPubs = computedAct.p;
+        var prevPubs = context.p;
+        context.p = undefined;
+        var isEmptyComputedPubs = computedPubs.length === 0;
+        if (isEmptyComputedPubs || computedPubs.some(function (el) {
+                return el.a.g(undefined) !== el.s;
+              })) {
+          var newPubs = isEmptyComputedPubs ? computedPubs : [];
+          context.p = newPubs;
+          computedAct.p = newPubs;
+          computedAct.a = fn(undefined);
+        }
+        context.p = prevPubs;
+        computedAct.v = context.v;
       }
-      
-    }
-    
-  } else {
-    var computed = act._0;
-    if (computed.v !== context.v || context.r === undefined) {
-      var computedPubs = computed.p;
-      var prevPubs = context.p;
-      context.p = undefined;
-      var isEmptyComputedPubs = computedPubs.length === 0;
-      if (isEmptyComputedPubs || computedPubs.some(function (el) {
-              return get(el.a) !== el.s;
-            })) {
-        var newPubs = isEmptyComputedPubs ? computedPubs : [];
-        context.p = newPubs;
-        computed.p = newPubs;
-        computed.s = computed.f(undefined);
+      var pubs = context.p;
+      if (pubs !== undefined) {
+        pubs.push({
+              a: computedAct,
+              s: computedAct.a
+            });
       }
-      context.p = prevPubs;
-      computed.v = context.v;
-    }
-    
-  }
-  var pubs = context.p;
-  if (pubs !== undefined) {
-    var tmp;
-    tmp = act._0.s;
-    pubs.push({
-          a: act,
-          s: tmp
-        });
-  }
-  return act._0.s;
-}
-
-function set(act, state) {
-  if (act.TAG === /* Value */0) {
-    var value = act._0;
-    value.s = state;
-    if (context.q.push(value.e) === 1) {
-      Promise.resolve(undefined).then(function (param) {
-            getNotify(undefined)();
-          });
-    }
-    value.e = [];
-    if (value.v !== context.v) {
-      value.v = context.v;
-      var match = context.u;
-      var match$1 = context.r;
-      if (match !== undefined) {
-        value.e.splice(value.e.indexOf(match), 1);
-      } else if (match$1 !== undefined) {
-        value.e.push(match$1);
-      }
-      
-    }
-    var pubs = context.p;
-    if (pubs === undefined) {
-      return ;
-    }
-    var tmp;
-    tmp = act._0.s;
-    pubs.push({
-          a: act,
-          s: tmp
-        });
-    return ;
-  }
-  throw new Error("Act.set is not supported for computed acts.");
+      return computedAct.a;
+    });
+  return computedAct;
 }
 
 function subscribe(act, cb) {
@@ -164,7 +158,7 @@ function subscribe(act, cb) {
     var prevRoot = context.r;
     context.r = effect;
     return callWithFinally((function () {
-                  var calculatedState = get(act);
+                  var calculatedState = act.g();
                   if (subscribtionContext.s !== calculatedState) {
                     subscribtionContext.s = calculatedState;
                     return cb(calculatedState);
@@ -178,15 +172,13 @@ function subscribe(act, cb) {
   return function (param) {
     context.v = context.v + 1;
     context.u = effect;
-    get(act);
+    act.g();
     context.u = undefined;
   };
 }
 
 exports.make = make;
 exports.computed = computed;
-exports.get = get;
-exports.set = set;
 exports.subscribe = subscribe;
 exports.getNotify = getNotify;
 exports.setNotify = setNotify;
