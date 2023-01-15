@@ -19,9 +19,14 @@
   "scripts": {
     "prepublishOnly": "npm run test && npm run build",
     "build": "microbundle",
-    "test": "tsx src/index.test.ts && node src/Act_test.bs.mjs",
+    "test": "tsx src/index.test.ts && ava",
     "res:build": "rescript build -with-deps",
     "res:dev": "rescript build -with-deps -w"
+  },
+  "ava": {
+    "files": [
+      "__tests__/**/*_test.bs.js"
+    ]
   },
   "author": "artalar",
   "maintainers": [
@@ -44,6 +49,8 @@
     "/package.json"
   ],
   "devDependencies": {
+    "@dzakh/rescript-ava": "^2.1.0",
+    "ava": "5.1.x",
     "microbundle": "^0.15.1",
     "tsx": "^3.12.1",
     "typescript": "^4.9.4",

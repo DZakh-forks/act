@@ -3,11 +3,16 @@
   "sources": [
     {
       "dir": "src"
+    },
+    {
+      "dir": "__tests__",
+      "type": "dev"
     }
   ],
+  "bs-dev-dependencies": ["@dzakh/rescript-ava"],
   "package-specs": {
-    "module": "es6",
+    "module": "commonjs",
     "in-source": true
   },
-  "suffix": ".bs.mjs"
+  "suffix": ".bs.js"
 }
