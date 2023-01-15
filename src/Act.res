@@ -25,14 +25,6 @@ module Fn = {
     Obj.magic(fn)(. arg1, arg2)
   }
 }
-module Exn = {
-  type error
-
-  @new
-  external makeError: string => error = "Error"
-
-  let raiseError = (error: error): 'a => error->Obj.magic->raise
-}
 
 type notify = (. unit) => unit
 type effect = (. unit) => unit
@@ -219,9 +211,7 @@ let computed = (~equalityCheck as maybeEqualityCheck=?, fn) => {
     version: initialActVersion,
     pubs: [],
     get: %raw("undefined"),
-    set: _ => {
-      Exn.raiseError(Exn.makeError("Act.set is not supported for computed acts."))
-    },
+    set: ignore,
   }
 
   {

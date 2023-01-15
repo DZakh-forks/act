@@ -111,8 +111,8 @@ function computed(maybeEqualityCheck, fn) {
     v: -1,
     p: [],
     g: undefined,
-    s: (function (param) {
-        throw new Error("Act.set is not supported for computed acts.");
+    s: (function (prim) {
+        
       })
   };
   computedAct.g = (function (param) {
