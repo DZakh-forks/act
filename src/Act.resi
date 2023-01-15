@@ -4,7 +4,7 @@ type unsubscribe = unit => unit
 
 let make: 'a => t<'a>
 
-let computed: (unit => 'a) => t<'a>
+let computed: (~equalityCheck: ('a, 'a) => bool=?, unit => 'a) => t<'a>
 
 @send
 external get: t<'a> => 'a = "g"

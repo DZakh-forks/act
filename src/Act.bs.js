@@ -105,7 +105,7 @@ function make(initial) {
   return valueAct;
 }
 
-function computed(fn) {
+function computed(maybeEqualityCheck, fn) {
   var computedAct = {
     a: undefined,
     v: -1,
@@ -127,7 +127,13 @@ function computed(fn) {
           var newPubs = isEmptyComputedPubs ? computedPubs : [];
           context.p = newPubs;
           computedAct.p = newPubs;
-          computedAct.a = fn(undefined);
+          var newState = fn(undefined);
+          if (computedAct.v === -1 || (
+              maybeEqualityCheck !== undefined ? !maybeEqualityCheck(computedAct.a, newState) : true
+            )) {
+            computedAct.a = newState;
+          }
+          
         }
         context.p = prevPubs;
         computedAct.v = context.v;

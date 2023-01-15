@@ -19,6 +19,11 @@ module Fn = {
   let call1 = (fn: 'arg1 => 'return, arg1: 'arg1): 'return => {
     Obj.magic(fn)(. arg1)
   }
+
+  @inline
+  let call2 = (fn: ('arg1, 'arg2) => 'return, arg1: 'arg1, arg2: 'arg2): 'return => {
+    Obj.magic(fn)(. arg1, arg2)
+  }
 }
 module Exn = {
   type error
@@ -110,6 +115,8 @@ let castNotifyFromInternal: internalNotify => notify = Obj.magic
 let castValueActToGeneric: valueAct<'a> => t<'a> = Obj.magic
 let castComputedActToGeneric: computedAct<'a> => t<'a> = Obj.magic
 
+let initialActVersion = -1.
+
 let initialNotify = (. context) => {
   let iterator = context.queue
 
@@ -175,7 +182,7 @@ let syncEffects = (valueAct: valueAct<'a>) => {
 let make = initial => {
   let valueAct = {
     state: initial,
-    version: -1.,
+    version: initialActVersion,
     effects: [],
     get: %raw("undefined"),
     set: %raw("undefined"),
@@ -206,10 +213,10 @@ let make = initial => {
   valueAct->castValueActToGeneric
 }
 
-let computed = fn => {
+let computed = (~equalityCheck as maybeEqualityCheck=?, fn) => {
   let computedAct = {
     state: %raw("undefined"),
-    version: -1.,
+    version: initialActVersion,
     pubs: [],
     get: %raw("undefined"),
     set: _ => {
@@ -235,11 +242,20 @@ let computed = fn => {
           let newPubs = isEmptyComputedPubs ? computedPubs : []
           context.maybePubs = Some(newPubs)
           computedAct.pubs = newPubs
-          computedAct.state = fn->Fn.call1()->castAnyToUnknown
 
-          // TODO:
-          // let newState = computed()
-          // if (_version === -1 || !equal?.(s, newState)) s = newState
+          let newState = fn->Fn.call1()->castAnyToUnknown
+          if (
+            computedAct.version === initialActVersion ||
+              switch maybeEqualityCheck {
+              | Some(equalityCheck) =>
+                equalityCheck
+                ->Fn.call2(computedAct.state->castUnknownToAny, newState->castUnknownToAny)
+                ->not
+              | None => true
+              }
+          ) {
+            computedAct.state = newState
+          }
         }
 
         context.maybePubs = prevPubs

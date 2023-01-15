@@ -14,22 +14,82 @@ Ava("[ReScript] read outside effect stale computed", (function (t) {
 
 Ava("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
         var res = [];
+        var numbers = [
+          0,
+          1
+        ];
+        var fib = function (n) {
+          if (n < 2) {
+            return 1;
+          } else {
+            return fib(n - 1 | 0) + fib(n - 2 | 0) | 0;
+          }
+        };
         var a = Act.make(0);
         var b = Act.make(0);
-        var c = Act.computed(function (param) {
-              return a.g() % 2 + b.g() % 2 | 0;
-            });
-        Act.subscribe(c, (function (v) {
+        var c = Act.computed(undefined, (function (param) {
+                return a.g() % 2 + b.g() % 2 | 0;
+              }));
+        var d = Act.computed((function (l, r) {
+                if (l.length === r.length) {
+                  return l.every(function (v, i) {
+                              return v === r[i];
+                            });
+                } else {
+                  return false;
+                }
+              }), (function (param) {
+                return numbers.map(function (i) {
+                            return (i + a.g() % 2 | 0) - b.g() % 2 | 0;
+                          });
+              }));
+        var e = Act.computed(undefined, (function (param) {
+                var n = (c.g() + a.g() | 0) + d.g()[0] | 0;
+                return n + fib(16) | 0;
+              }));
+        var f = Act.computed(undefined, (function (param) {
+                var dValue = d.g()[0];
+                var n = dValue === 0 ? dValue : b.g();
+                return n + fib(16) | 0;
+              }));
+        var g = Act.computed(undefined, (function (param) {
+                var cValue = c.g();
+                return ((c.g() + (
+                            cValue === 0 ? e.g() % 2 : cValue
+                          ) | 0) + d.g()[0] | 0) + f.g() | 0;
+              }));
+        Act.subscribe(g, (function (v) {
+                res.push(v + fib(16) | 0);
+              }));
+        Act.subscribe(g, (function (v) {
                 res.push(v);
               }));
-        t.deepEqual(res, [0], undefined);
+        Act.subscribe(f, (function (v) {
+                res.push(v + fib(16) | 0);
+              }));
+        for(var i = 1; i >= 0; --i){
+          ((res.length = 0));
+          b.s(1);
+          a.s(1 + (i << 1) | 0);
+          Act.getNotify(undefined)();
+          a.s(2 + (i << 1) | 0);
+          b.s(2);
+          Act.getNotify(undefined)();
+          t.is(res.length, 4, undefined);
+          t.deepEqual(res, [
+                3198,
+                1601,
+                3195,
+                1598
+              ], undefined);
+        }
       }));
 
 Ava("throw should not broke linking", (function (t) {
         try {
-          Act.subscribe(Act.computed(function (param) {
-                    return Js_exn.raiseError("Foo");
-                  }), (function (param) {
+          Act.subscribe(Act.computed(undefined, (function (param) {
+                      return Js_exn.raiseError("Foo");
+                    })), (function (param) {
                   
                 }));
         }
@@ -37,12 +97,12 @@ Ava("throw should not broke linking", (function (t) {
           
         }
         var a = Act.make(0);
-        var b = Act.computed(function (param) {
-              return a.g();
-            });
-        var c = Act.computed(function (param) {
-              return a.g();
-            });
+        var b = Act.computed(undefined, (function (param) {
+                return a.g();
+              }));
+        var c = Act.computed(undefined, (function (param) {
+                return a.g();
+              }));
         Act.subscribe(c, (function (param) {
                 
               }));
