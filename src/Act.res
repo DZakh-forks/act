@@ -2,9 +2,9 @@ module Array = Js.Array2
 module Promise = {
   type t<+'a> = promise<'a>
   @send
-  external thenResolve: (t<'a>, 'a => 'b) => t<'b> = "then"
+  external thenResolveUnit: (t<unit>, (. unit) => 'b) => t<'b> = "then"
   @val @scope("Promise")
-  external resolve: 'a => t<'a> = "resolve"
+  external resolve: unit => t<'a> = "resolve"
 }
 module Fn = {
   let callWithFinally: (. (. unit) => 'a, (. unit) => unit) => 'a = %raw(`(fn, finallyCb) => {
@@ -87,9 +87,8 @@ type rec context = {
   @as("p")
   mutable maybePubs: option<array<pub<unknown>>>,
   @as("n")
-  mutable notify: internalNotify,
+  mutable notify: notify,
 }
-and internalNotify = (. context) => unit
 
 type subscribtionContext = {
   @as("q")
@@ -102,14 +101,20 @@ let castUnknownToAny: unknown => 'a = Obj.magic
 let castAnyToUnknown: 'a => unknown = Obj.magic
 let castAnyActToUnknownAct: t<'a> => t<unknown> = Obj.magic
 let castUnknownActToAnyAct: t<unknown> => t<'a> = Obj.magic
-let castNotifyToInternal: notify => internalNotify = Obj.magic
-let castNotifyFromInternal: internalNotify => notify = Obj.magic
 let castValueActToGeneric: valueAct<'a> => t<'a> = Obj.magic
 let castComputedActToGeneric: computedAct<'a> => t<'a> = Obj.magic
 
 let initialActVersion = -1.
 
-let initialNotify = (. context) => {
+let context = {
+  maybeRoot: None,
+  maybeUnroot: None,
+  queue: [],
+  maybePubs: None,
+  version: 0.,
+  notify: %raw("undefined"),
+}
+context.notify = (. ()) => {
   let iterator = context.queue
 
   context.queue = []
@@ -123,22 +128,11 @@ let initialNotify = (. context) => {
   }
 }
 
-let context = {
-  maybeRoot: None,
-  maybeUnroot: None,
-  queue: [],
-  maybePubs: None,
-  version: 0.,
-  notify: initialNotify,
-}
+let notify = (. ()) => context.notify(.)
 
-let getNotify = () =>
-  context.notify === initialNotify
-    ? (. ()) => initialNotify(. context)
-    : context.notify->castNotifyFromInternal
-
-let setNotify = notify => {
-  context.notify = notify->castNotifyToInternal
+let wrapNotify = fn => {
+  let prevNotify = context.notify
+  context.notify = (. ()) => fn->Fn.call1(prevNotify)
 }
 
 @inline
@@ -192,7 +186,7 @@ let make = initial => {
       valueAct.state = state
 
       if context.queue->Array.push(valueAct.effects) === 1 {
-        Promise.resolve()->Promise.thenResolve(() => getNotify()(.))->ignore
+        Promise.resolve()->Promise.thenResolveUnit(notify)->ignore
       }
 
       valueAct.effects = []

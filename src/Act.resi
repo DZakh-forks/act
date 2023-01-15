@@ -14,6 +14,6 @@ external set: (t<'a>, 'a) => unit = "s"
 
 let subscribe: (t<'a>, 'a => unit) => unsubscribe
 
-let getNotify: unit => notify
+let notify: notify
 
-let setNotify: notify => unit
+let wrapNotify: (notify => unit) => unit

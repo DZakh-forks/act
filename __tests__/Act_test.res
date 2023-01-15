@@ -5,7 +5,7 @@ open Ava
 
 @@warning("-21")
 
-test("[ReScript] read outside effect stale computed", t => {
+test("read outside effect stale computed", t => {
   let a = Act.make(0)
   let b = () => a->Act.get
 
@@ -15,7 +15,7 @@ test("[ReScript] read outside effect stale computed", t => {
   t->Assert.is(b(), 1, ())
 })
 
-test("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", t => {
+test("https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", t => {
   let res = []
 
   let numbers = [0, 1]
@@ -59,11 +59,11 @@ test("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", t => {
     %raw("res.length = 0")
     b->Act.set(1)
     a->Act.set(1 + i * 2)
-    Act.getNotify()(.)
+    Act.notify(.)
 
     a->Act.set(2 + i * 2)
     b->Act.set(2)
-    Act.getNotify()(.)
+    Act.notify(.)
 
     t->Assert.is(res->Array.length, 4, ())
     t->Assert.deepEqual(res, [3198, 1601, 3195, 1598], ())
@@ -72,7 +72,6 @@ test("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", t => {
 
 test("throw should not broke linking", t => {
   try {
-    // @ts-expect-error
     let _ = Act.computed(() => Js.Exn.raiseError("Foo"))->Act.subscribe(_ => ())
   } catch {
   | _ => ()
@@ -87,9 +86,8 @@ test("throw should not broke linking", t => {
   t->Assert.deepEqual([a->Act.get, b->Act.get, c->Act.get], [1, 1, 1], ())
 })
 
-asyncTest("[ReScript] redefine act.notify", async t => {
-  let notify = Act.getNotify()
-  Act.setNotify((. ()) => {
+asyncTest("redefine act.notify", async t => {
+  Act.wrapNotify(notify => {
     Global.setTimeout(
       () => {
         notify(.)

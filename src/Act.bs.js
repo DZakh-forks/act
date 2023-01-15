@@ -10,38 +10,35 @@ var callWithFinally = ((fn, finallyCb) => {
     }
   });
 
-function initialNotify(context) {
-  var iterator = context.q;
-  context.q = [];
-  for(var effectsIdx = 0 ,effectsIdx_finish = iterator.length; effectsIdx < effectsIdx_finish; ++effectsIdx){
-    var effects = iterator[effectsIdx];
-    for(var effectIdx = 0 ,effectIdx_finish = effects.length; effectIdx < effectIdx_finish; ++effectIdx){
-      effects[effectIdx]();
-    }
-  }
-}
-
 var context = {
   r: undefined,
   u: undefined,
   q: [],
   v: 0,
   p: undefined,
-  n: initialNotify
+  n: undefined
 };
 
-function getNotify(param) {
-  if (context.n === initialNotify) {
-    return function () {
-      return initialNotify(context);
-    };
-  } else {
-    return context.n;
-  }
+context.n = (function () {
+    var iterator = context.q;
+    context.q = [];
+    for(var effectsIdx = 0 ,effectsIdx_finish = iterator.length; effectsIdx < effectsIdx_finish; ++effectsIdx){
+      var effects = iterator[effectsIdx];
+      for(var effectIdx = 0 ,effectIdx_finish = effects.length; effectIdx < effectIdx_finish; ++effectIdx){
+        effects[effectIdx]();
+      }
+    }
+  });
+
+function notify() {
+  return context.n();
 }
 
-function setNotify(notify) {
-  context.n = notify;
+function wrapNotify(fn) {
+  var prevNotify = context.n;
+  context.n = (function () {
+      return fn(prevNotify);
+    });
 }
 
 function make(initial) {
@@ -76,9 +73,7 @@ function make(initial) {
   valueAct.s = (function (state) {
       valueAct.a = state;
       if (context.q.push(valueAct.e) === 1) {
-        Promise.resolve(undefined).then(function (param) {
-              getNotify(undefined)();
-            });
+        Promise.resolve().then(notify);
       }
       valueAct.e = [];
       if (valueAct.v !== context.v) {
@@ -186,6 +181,6 @@ function subscribe(act, cb) {
 exports.make = make;
 exports.computed = computed;
 exports.subscribe = subscribe;
-exports.getNotify = getNotify;
-exports.setNotify = setNotify;
-/* No side effect */
+exports.notify = notify;
+exports.wrapNotify = wrapNotify;
+/*  Not a pure module */

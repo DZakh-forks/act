@@ -5,14 +5,14 @@ var Act = require("../src/Act.bs.js");
 var Ava = require("ava").default;
 var Js_exn = require("rescript/lib/js/js_exn.js");
 
-Ava("[ReScript] read outside effect stale computed", (function (t) {
+Ava("read outside effect stale computed", (function (t) {
         var a = Act.make(0);
         t.is(a.g(), 0, undefined);
         a.s(1);
         t.is(a.g(), 1, undefined);
       }));
 
-Ava("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
+Ava("https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
         var res = [];
         var numbers = [
           0,
@@ -71,10 +71,10 @@ Ava("[ReScript] https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
           ((res.length = 0));
           b.s(1);
           a.s(1 + (i << 1) | 0);
-          Act.getNotify(undefined)();
+          Act.notify();
           a.s(2 + (i << 1) | 0);
           b.s(2);
-          Act.getNotify(undefined)();
+          Act.notify();
           t.is(res.length, 4, undefined);
           t.deepEqual(res, [
                 3198,
@@ -118,9 +118,8 @@ Ava("throw should not broke linking", (function (t) {
             ], undefined);
       }));
 
-Ava("[ReScript] redefine act.notify", (async function (t) {
-        var notify = Act.getNotify(undefined);
-        Act.setNotify(function () {
+Ava("redefine act.notify", (async function (t) {
+        Act.wrapNotify(function (notify) {
               setTimeout((function (param) {
                       notify();
                     }), 0);
