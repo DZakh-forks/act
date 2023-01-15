@@ -1,9 +1,11 @@
 module Promise = Js.Promise2
 module Array = Js.Array2
+module ArrayX = {
+  @set
+  external setLength: (array<'a>, int) => unit = "length"
+}
 module Global = Js.Global
 open Ava
-
-@@warning("-21")
 
 test("read outside effect stale computed", t => {
   let a = Act.make(0)
@@ -56,7 +58,7 @@ test("https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", t => {
   let _ = f->Act.subscribe(v => res->Array.push(hard(v, "J"))->ignore)
 
   for i in 1 downto 0 {
-    %raw("res.length = 0")
+    res->ArrayX.setLength(0)
     b->Act.set(1)
     a->Act.set(1 + i * 2)
     Act.notify(.)

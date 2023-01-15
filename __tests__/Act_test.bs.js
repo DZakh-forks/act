@@ -68,7 +68,7 @@ Ava("https://perf.js.hyoo.ru/#!bench=9h2as6_u0mfnn", (function (t) {
                 res.push(v + fib(16) | 0);
               }));
         for(var i = 1; i >= 0; --i){
-          ((res.length = 0));
+          res.length = 0;
           b.s(1);
           a.s(1 + (i << 1) | 0);
           Act.notify();
