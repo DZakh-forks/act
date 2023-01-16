@@ -71,3 +71,7 @@ build/
 
 packages/**/package-lock.json
 packages/**/yarn.lock
+
+# ReScript
+/lib/
+/.bsb.lock
